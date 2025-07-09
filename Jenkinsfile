@@ -1,23 +1,16 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:18'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     stages {
-        stage('Install Dependencies') {
+        stage('Setup Node') {
             steps {
-                echo "Installing dependencies..."
-                sh 'npm install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                echo "Running tests..."
-                sh 'node test.js'
+                echo "Using node container to install deps and test"
+                sh '''
+                    docker run --rm -v $PWD:/app -w /app node:18 sh -c "
+                      npm install &&
+                      node test.js
+                    "
+                '''
             }
         }
 
@@ -41,14 +34,14 @@ pipeline {
     }
 
     post {
-        always {
-            echo "Pipeline completed"
-        }
         success {
             echo "Build succeeded!"
         }
         failure {
             echo "Build failed!"
+        }
+        always {
+            echo " Pipeline terminé"
         }
     }
 }
