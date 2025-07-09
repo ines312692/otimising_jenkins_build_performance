@@ -1,5 +1,5 @@
 # Dockerfile
-FROM node:18
+FROM nginx:alpine
 WORKDIR /app
 COPY . .
 RUN npm install
