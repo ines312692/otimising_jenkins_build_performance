@@ -10,13 +10,7 @@ RUN npm install
 
 EXPOSE 3000
 
-
-COPY <<EOF /start.sh
-#!/bin/sh
-nginx -g 'daemon on;'
-node index.js
-EOF
-
+COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
