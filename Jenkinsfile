@@ -6,7 +6,6 @@ pipeline {
             steps {
                 echo "Using node container to install deps and test"
                 sh '''
-                    docker run --rm -v $PWD:/app -w /app node:18 sh -c "
                       npm install &&
                       node test.js
                     "
