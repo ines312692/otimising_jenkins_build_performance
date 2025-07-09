@@ -17,20 +17,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image..."
-                sh 'docker build -t my-node-app .'
+                sh 'docker build -t my-node-app:latest .'
             }
         }
 
-        stage('Deploy') {
-            steps {
-                echo "Deploying Docker container..."
-                sh '''
-                    docker stop my-node-app || true
-                    docker rm my-node-app || true
-                    docker run -d -p 3000:3000 --name my-node-app my-node-app
-                '''
-            }
-        }
+
     }
 
     post {
