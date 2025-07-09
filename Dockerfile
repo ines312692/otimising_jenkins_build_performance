@@ -1,17 +1,22 @@
-FROM node:18 AS build
+FROM nginx:alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY . .
+
+RUN apk add --update nodejs npm
+
 RUN npm install
 
-COPY . .
-RUN npm run build
+EXPOSE 3000
 
 
-FROM nginx:alpine
+COPY <<EOF /start.sh
+#!/bin/sh
+nginx -g 'daemon on;'
+node index.js
+EOF
 
-COPY --from=build /app/dist /usr/share/nginx/html
+RUN chmod +x /start.sh
 
-EXPOSE 80
-
+CMD ["/start.sh"]
