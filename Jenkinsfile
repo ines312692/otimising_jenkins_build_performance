@@ -2,36 +2,32 @@ pipeline {
     agent any
 
     stages {
-        stage('Setup Node') {
+        stage('Install and Test') {
+            agent {
+                docker { image 'node:18' }
+            }
             steps {
-                echo "Using node container to install deps and test"
-                sh '''
-                      npm install &&
-                      node test.js
-                    "
-                '''
+                sh 'npm install'
+                sh 'node test.js'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
                 sh 'docker build -t my-node-app:latest .'
             }
         }
-
-
     }
 
     post {
         success {
-            echo "Build succeeded!"
+            echo 'Build succeeded!'
         }
         failure {
-            echo "Build failed!"
+            echo 'Build failed!'
         }
         always {
-            echo " Pipeline terminé"
+            echo 'Pipeline terminé'
         }
     }
 }
