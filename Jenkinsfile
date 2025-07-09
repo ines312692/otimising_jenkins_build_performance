@@ -43,19 +43,39 @@ pipeline {
                 script {
                     timestamps.stageStartTime = System.currentTimeMillis()
 
-                    // Check if cache exists using proper Windows path handling
-                    def cacheExistsResult = bat(script: "if exist \"${NODE_MODULES_CACHE}\" (echo EXISTS) else (echo NOT_EXISTS)", returnStdout: true).trim()
+                    // Check if cache exists and has content
+                    def cacheValidResult = bat(script: """
+                        if exist "${NODE_MODULES_CACHE}" (
+                            dir "${NODE_MODULES_CACHE}" /A /B 2>nul | find /c /v "" >nul
+                            if !errorlevel! equ 0 (
+                                echo VALID_CACHE
+                            ) else (
+                                echo EMPTY_CACHE
+                            )
+                        ) else (
+                            echo NO_CACHE
+                        )
+                    """, returnStdout: true).trim()
 
-                    if (cacheExistsResult.contains('EXISTS')) {
-                        echo "Cache trouvé, restauration des dépendances..."
+                    if (cacheValidResult.contains('VALID_CACHE')) {
+                        echo "Cache valide trouvé, restauration des dépendances..."
 
                         // Remove existing node_modules if it exists
                         bat "if exist \"node_modules\" rmdir /S /Q \"node_modules\""
 
-                        // Copy cached node_modules to workspace
-                        bat "xcopy \"${NODE_MODULES_CACHE}\" \"node_modules\" /E /I /H /Y"
+                        // Copy cached node_modules to workspace with error handling
+                        def xcopyResult = bat(script: "xcopy \"${NODE_MODULES_CACHE}\" \"node_modules\" /E /I /H /Y", returnStatus: true)
 
-                        echo "Cache restauré avec succès"
+                        if (xcopyResult == 0) {
+                            echo "Cache restauré avec succès"
+                        } else {
+                            echo "Erreur lors de la restauration du cache, installation complète nécessaire"
+                            // Clean up failed restoration
+                            bat "if exist \"node_modules\" rmdir /S /Q \"node_modules\""
+                        }
+                    } else if (cacheValidResult.contains('EMPTY_CACHE')) {
+                        echo "Cache vide trouvé, suppression du cache corrompu"
+                        bat "rmdir /S /Q \"${NODE_MODULES_CACHE}\""
                     } else {
                         echo "Aucun cache trouvé, installation complète nécessaire"
                     }
@@ -75,10 +95,21 @@ pipeline {
 
                 // Check if node_modules exists and is not empty
                 script {
-                    def nodeModulesResult = bat(script: "if exist \"node_modules\" (echo EXISTS) else (echo NOT_EXISTS)", returnStdout: true).trim()
+                    def nodeModulesResult = bat(script: """
+                        if exist "node_modules" (
+                            dir "node_modules" /A /B 2>nul | find /c /v "" >nul
+                            if !errorlevel! equ 0 (
+                                echo VALID_MODULES
+                            ) else (
+                                echo EMPTY_MODULES
+                            )
+                        ) else (
+                            echo NO_MODULES
+                        )
+                    """, returnStdout: true).trim()
 
-                    if (nodeModulesResult.contains('EXISTS')) {
-                        echo "node_modules existe, vérification des dépendances..."
+                    if (nodeModulesResult.contains('VALID_MODULES')) {
+                        echo "node_modules existe et contient des fichiers, vérification des dépendances..."
                         // Use npm ci for faster installs when package-lock.json exists
                         def packageLockExists = bat(script: "if exist \"package-lock.json\" (echo EXISTS) else (echo NOT_EXISTS)", returnStdout: true).trim()
 
@@ -88,7 +119,7 @@ pipeline {
                             bat 'npm install --silent'
                         }
                     } else {
-                        echo "node_modules n'existe pas, installation complète..."
+                        echo "node_modules n'existe pas ou est vide, installation complète..."
                         bat 'npm install --silent'
                     }
                 }
@@ -105,19 +136,36 @@ pipeline {
                 script {
                     timestamps.stageStartTime = System.currentTimeMillis()
 
-                    // Check if node_modules exists before caching
-                    def nodeModulesResult = bat(script: "if exist \"node_modules\" (echo EXISTS) else (echo NOT_EXISTS)", returnStdout: true).trim()
+                    // Check if node_modules exists and has content before caching
+                    def nodeModulesResult = bat(script: """
+                        if exist "node_modules" (
+                            dir "node_modules" /A /B 2>nul | find /c /v "" >nul
+                            if !errorlevel! equ 0 (
+                                echo VALID_MODULES
+                            ) else (
+                                echo EMPTY_MODULES
+                            )
+                        ) else (
+                            echo NO_MODULES
+                        )
+                    """, returnStdout: true).trim()
 
-                    if (nodeModulesResult.contains('EXISTS')) {
+                    if (nodeModulesResult.contains('VALID_MODULES')) {
+                        echo "node_modules valide trouvé, sauvegarde du cache..."
+
                         // Remove old cache if it exists
                         bat "if exist \"${NODE_MODULES_CACHE}\" rmdir /S /Q \"${NODE_MODULES_CACHE}\""
 
-                        // Save new cache
-                        bat "xcopy \"node_modules\" \"${NODE_MODULES_CACHE}\" /E /I /H /Y"
+                        // Save new cache with error handling
+                        def xcopyResult = bat(script: "xcopy \"node_modules\" \"${NODE_MODULES_CACHE}\" /E /I /H /Y", returnStatus: true)
 
-                        echo "Cache sauvegardé avec succès"
+                        if (xcopyResult == 0) {
+                            echo "Cache sauvegardé avec succès"
+                        } else {
+                            echo "Erreur lors de la sauvegarde du cache"
+                        }
                     } else {
-                        echo "Aucun node_modules à sauvegarder"
+                        echo "Aucun node_modules valide à sauvegarder"
                     }
 
                     def duration = (System.currentTimeMillis() - timestamps.stageStartTime) / 1000
@@ -169,8 +217,19 @@ pipeline {
                 echo "Fin du build: ${new Date()}"
                 echo "Duree totale du build: ${totalDuration} secondes"
 
-                // Cache statistics
-                def cacheSizeResult = bat(script: "if exist \"${NODE_MODULES_CACHE}\" (dir \"${NODE_MODULES_CACHE}\" /s /-c | find \"File(s)\") else (echo \"Cache vide\")", returnStdout: true).trim()
+                // Cache statistics with better error handling
+                def cacheSizeResult = bat(script: """
+                    if exist "${NODE_MODULES_CACHE}" (
+                        dir "${NODE_MODULES_CACHE}" /s /-c 2>nul | find "File(s)" 2>nul
+                        if !errorlevel! equ 0 (
+                            echo Cache presente
+                        ) else (
+                            echo Cache vide ou inaccessible
+                        )
+                    ) else (
+                        echo Cache inexistant
+                    )
+                """, returnStdout: true).trim()
                 echo "Informations sur le cache: ${cacheSizeResult}"
             }
             echo "Pipeline completed"
