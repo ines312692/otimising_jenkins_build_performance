@@ -1,13 +1,12 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:18'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 echo "Installing dependencies..."
@@ -31,15 +30,12 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo "Deploying container..."
-                script {
-
-                    sh 'docker stop my-node-app || echo "Not running"'
-                    sh 'docker rm my-node-app || echo "Already removed"'
-
-
-                    sh 'docker run -d -p 3000:3000 --name my-node-app my-node-app'
-                }
+                echo "Deploying Docker container..."
+                sh '''
+                    docker stop my-node-app || true
+                    docker rm my-node-app || true
+                    docker run -d -p 3000:3000 --name my-node-app my-node-app
+                '''
             }
         }
     }
