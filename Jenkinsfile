@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        CACHE_KEY = "node-cache-${env.BRANCH_NAME}"
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -12,33 +8,19 @@ pipeline {
             }
         }
 
-        stage('Restore Cache') {
+        stage('Restore & Install Dependencies') {
             steps {
-                cache(caches: [paths: ['node_modules']], key: "${CACHE_KEY}", restoreKeys: ['node-cache-']) {
-                    echo " Restoring node_modules from cache"
+                cache(caches: [paths: ['node_modules']]) {
+                    echo " Installing dependencies with caching..."
+                    bat 'npm install'
                 }
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                echo " Installing dependencies..."
-                bat 'npm install'
             }
         }
 
         stage('Run Tests') {
             steps {
-                echo "Running tests..."
+                echo " Running tests..."
                 bat 'npm test'
-            }
-        }
-
-        stage('Save Cache') {
-            steps {
-                cache(caches: [paths: ['node_modules']], key: "${CACHE_KEY}") {
-                    echo " Saving node_modules to cache"
-                }
             }
         }
     }
