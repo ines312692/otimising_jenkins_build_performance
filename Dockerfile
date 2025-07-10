@@ -7,12 +7,13 @@ RUN npm install
 
 COPY . .
 
-RUN mkdir dist
+RUN mkdir dist #construit le dossier dist
 
 FROM nginx:alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
+#copie le dossier dist dans le dossier html de nginx
 
-EXPOSE 80
+EXPOSE 90
 
 CMD ["nginx", "-g", "daemon off;"]
