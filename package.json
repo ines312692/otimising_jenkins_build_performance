@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node app.js",
     "test": "node test.js",
-    "dev": "node app.js"
+    "dev": "node app.js",
+    "build": "echo 'No build needed for now'"
   },
   "private": true,
   "keywords": [],
