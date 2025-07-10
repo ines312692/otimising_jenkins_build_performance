@@ -7,7 +7,7 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build #construit le dossier dist
+RUN mkdir dist #construit le dossier dist
 
 FROM nginx:alpine
 
