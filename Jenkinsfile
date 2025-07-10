@@ -22,14 +22,23 @@ pipeline {
 
         stage('Deploy') {
             steps {
+                script {
+                    try {
+                        sh 'docker stop my-node-app'
+                    } catch (err) {
+                        echo "Container stop failed or container not running: ${err}"
+                    }
 
-                sh '''
-                    docker stop my-node-app || true
-                    docker rm my-node-app || true
-                '''
-                sh '''
-                    docker run -d --name my-node-app -p 3000:3000 my-node-app:latest
-                '''
+                    try {
+                        sh 'docker rm my-node-app'
+                    } catch (err) {
+                        echo "Container removal failed or container doesn't exist: ${err}"
+                    }
+
+                    sh '''
+                        docker run -d --name my-node-app -p 3000:3000 my-node-app:latest
+                    '''
+                }
             }
         }
     }
